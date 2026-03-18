@@ -12,8 +12,6 @@ const api = axios.create({
 // ---------- Reserved Slot Management ----------
 
 export async function addPlayerToReservedList(steamId: string): Promise<void> {
-  const url = `/reserved-player-lists/${config.BM_RESERVED_LIST_ID}/players`;
-
   const payload = {
     data: {
       type: 'reservedPlayer',
@@ -26,11 +24,19 @@ export async function addPlayerToReservedList(steamId: string): Promise<void> {
           },
         ],
       },
+      relationships: {
+        reservedPlayerList: {
+          data: {
+            type: 'reservedPlayerList',
+            id: config.BM_RESERVED_LIST_ID,
+          },
+        },
+      },
     },
   };
 
   try {
-    await api.post(url, payload);
+    await api.post('/reserved-players', payload);
     console.log(`Added ${steamId} to reserved list`);
   } catch (err) {
     const axErr = err as AxiosError;
@@ -45,12 +51,13 @@ export async function addPlayerToReservedList(steamId: string): Promise<void> {
 }
 
 export async function removePlayerFromReservedList(steamId: string): Promise<void> {
-  // Step 1: Find the reservedPlayer entry by searching for the steamId
-  const searchUrl = `/reserved-player-lists/${config.BM_RESERVED_LIST_ID}/players`;
-
   try {
-    const searchRes = await api.get(searchUrl, {
-      params: { 'filter[search]': steamId },
+    // Step 1: Find the reservedPlayer entry via flat endpoint with filters
+    const searchRes = await api.get('/reserved-players', {
+      params: {
+        'filter[list]': config.BM_RESERVED_LIST_ID,
+        'filter[search]': steamId,
+      },
     });
 
     const players = searchRes.data?.data;
@@ -62,7 +69,7 @@ export async function removePlayerFromReservedList(steamId: string): Promise<voi
     const reservedPlayerId = players[0].id;
 
     // Step 2: Delete by the BattleMetrics reservedPlayer ID
-    await api.delete(`${searchUrl}/${reservedPlayerId}`);
+    await api.delete(`/reserved-players/${reservedPlayerId}`);
     console.log(`Removed ${steamId} (BM ID: ${reservedPlayerId}) from reserved list`);
   } catch (err) {
     const axErr = err as AxiosError;
