@@ -4,7 +4,7 @@ import { config } from '../../config';
 import { startStatusUpdater } from '../../services/statusUpdater';
 
 export function registerReadyEvent(): void {
-  client.once('ready', async () => { // trigger redeploy
+  client.once('ready', async () => {
     console.log(`Bot logged in as ${client.user?.tag}`);
 
     // Register slash command
