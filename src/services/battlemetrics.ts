@@ -11,12 +11,13 @@ const api = axios.create({
 
 // ---------- Reserved Slot Management ----------
 
-export async function addPlayerToReservedSlot(steamId: string): Promise<void> {
+export async function addPlayerToReservedSlot(steamId: string, discordTag?: string): Promise<void> {
   const payload = {
     data: {
       type: 'reservedSlot',
       attributes: {
         expires: null, // no expiry — managed by role revocation
+        description: discordTag ? `Discord: ${discordTag}` : 'Managed by JanGuard',
         identifiers: [
           {
             type: 'steamID',

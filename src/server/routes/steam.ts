@@ -95,7 +95,7 @@ router.get(
       });
 
       // Add to BattleMetrics reserved list
-      await addPlayerToReservedSlot(steamId);
+      await addPlayerToReservedSlot(steamId, member.user.tag);
 
       // DM the user
       try {
