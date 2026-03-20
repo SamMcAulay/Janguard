@@ -30,16 +30,24 @@ router.get('/auth/steam', (req: Request, res: Response, next: NextFunction) => {
 });
 
 // Step 2: Steam redirects back here after auth
+// Use middleware to save session data before passport regenerates the session
 router.get(
   '/auth/steam/return',
+  (req: Request, _res: Response, next: NextFunction) => {
+    // Capture session data before passport.authenticate regenerates the session
+    const discordId = (req.session as any).discordId;
+    const guildId = (req.session as any).guildId;
+    (req as any)._authContext = { discordId, guildId };
+    next();
+  },
   passport.authenticate('steam', { failureRedirect: '/auth/failed' }),
   async (req: Request, res: Response) => {
     try {
       const steamProfile = req.user as any;
       const steamId: string = steamProfile._json.steamid;
 
-      const discordId: string = (req.session as any).discordId;
-      const guildId: string = (req.session as any).guildId || '';
+      const { discordId, guildId: rawGuildId } = (req as any)._authContext || {};
+      const guildId: string = rawGuildId || '';
 
       if (!discordId) {
         console.error('Auth return: no discordId found. Session:', JSON.stringify(req.session));
