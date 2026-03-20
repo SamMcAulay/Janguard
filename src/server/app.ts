@@ -13,7 +13,7 @@ export function createServer(): express.Express {
     session({
       secret: config.SESSION_SECRET,
       resave: false,
-      saveUninitialized: false,
+      saveUninitialized: true,
       cookie: {
         secure: true,    // Railway provides HTTPS
         maxAge: 600_000, // 10 minutes — plenty for auth flow
