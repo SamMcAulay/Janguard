@@ -17,7 +17,7 @@ export async function addPlayerToReservedSlot(steamId: string, discordTag?: stri
       type: 'reservedSlot',
       attributes: {
         expires: null, // no expiry — managed by role revocation
-        description: discordTag ? `Discord: ${discordTag}` : 'Managed by JanGuard',
+        note: discordTag ? `Discord: ${discordTag}` : 'Managed by JanGuard',
         identifiers: [
           {
             type: 'steamID',
