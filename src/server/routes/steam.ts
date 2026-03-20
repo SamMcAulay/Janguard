@@ -3,7 +3,7 @@ import { passport } from '../auth';
 import { config } from '../../config';
 import { prisma } from '../../db';
 import { client } from '../../bot/client';
-import { addPlayerToReservedSlot } from '../../services/battlemetrics';
+import { addPlayerToReservedSlot, removePlayerFromReservedSlot } from '../../services/battlemetrics';
 const router = Router();
 
 // Step 1: User clicks link — capture discordId, then redirect to Steam
@@ -87,21 +87,41 @@ router.get(
         }
       }
 
-      // Upsert user in database
+      // Check if user already has an active reserved slot
+      const existingUser = await prisma.user.findUnique({ where: { discordId } });
+      const alreadyReserved = existingUser?.isVip && existingUser.steamId === steamId;
+
+      // Upsert user in database (always update Steam link)
       await prisma.user.upsert({
         where: { discordId },
         update: { steamId, isVip: true },
         create: { discordId, steamId, isVip: true },
       });
 
-      // Add to BattleMetrics reserved list
-      await addPlayerToReservedSlot(steamId, member.user.tag);
+      // Only create a BattleMetrics reserved slot if they don't already have one
+      if (!alreadyReserved) {
+        // If they had a slot under a different Steam ID, remove the old one
+        if (existingUser?.isVip && existingUser.steamId && existingUser.steamId !== steamId) {
+          try {
+            await removePlayerFromReservedSlot(existingUser.steamId);
+          } catch {
+            console.warn(`Could not remove old reserved slot for ${existingUser.steamId}`);
+          }
+        }
+        await addPlayerToReservedSlot(steamId, member.user.tag);
+      }
 
       // DM the user
       try {
-        await member.send(
-          `Your VIP reserved slot is now **active**! Steam ID \`${steamId}\` has been linked to your account.`,
-        );
+        if (alreadyReserved) {
+          await member.send(
+            `Your Steam account \`${steamId}\` has been re-linked. Your existing VIP reserved slot is still active.`,
+          );
+        } else {
+          await member.send(
+            `Your VIP reserved slot is now **active**! Steam ID \`${steamId}\` has been linked to your account.`,
+          );
+        }
       } catch {
         console.warn(`Could not DM ${member.user.tag}`);
       }
