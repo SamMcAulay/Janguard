@@ -20,7 +20,15 @@ router.get('/auth/steam', (req: Request, res: Response, next: NextFunction) => {
   (req.session as any).discordId = discordId;
   (req.session as any).guildId = guildId || '';
 
-  passport.authenticate('steam')(req, res, next);
+  // Explicitly save session before redirect to prevent data loss
+  req.session.save((err) => {
+    if (err) {
+      console.error('Session save error:', err);
+      res.status(500).send(errorPage('Failed to initialize session.'));
+      return;
+    }
+    passport.authenticate('steam')(req, res, next);
+  });
 });
 
 // Step 2: Steam redirects back here after auth
