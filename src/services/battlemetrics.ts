@@ -11,11 +11,12 @@ const api = axios.create({
 
 // ---------- Reserved Slot Management ----------
 
-export async function addPlayerToReservedList(steamId: string): Promise<void> {
+export async function addPlayerToReservedSlot(steamId: string): Promise<void> {
   const payload = {
     data: {
-      type: 'reservedPlayer',
+      type: 'reservedSlot',
       attributes: {
+        expires: null, // no expiry — managed by role revocation
         identifiers: [
           {
             type: 'steamID',
@@ -25,10 +26,18 @@ export async function addPlayerToReservedList(steamId: string): Promise<void> {
         ],
       },
       relationships: {
-        reservedPlayerList: {
+        servers: {
+          data: [
+            {
+              type: 'server',
+              id: config.HLL_SERVER_ID,
+            },
+          ],
+        },
+        organization: {
           data: {
-            type: 'reservedPlayerList',
-            id: config.BM_RESERVED_LIST_ID,
+            type: 'organization',
+            id: config.BM_ORGANIZATION_ID,
           },
         },
       },
@@ -36,8 +45,8 @@ export async function addPlayerToReservedList(steamId: string): Promise<void> {
   };
 
   try {
-    await api.post('/reserved-players', payload);
-    console.log(`Added ${steamId} to reserved list`);
+    await api.post('/reserved-slots', payload);
+    console.log(`Added reserved slot for Steam ID ${steamId}`);
   } catch (err) {
     const axErr = err as AxiosError;
     if (axErr.response) {
@@ -50,27 +59,27 @@ export async function addPlayerToReservedList(steamId: string): Promise<void> {
   }
 }
 
-export async function removePlayerFromReservedList(steamId: string): Promise<void> {
+export async function removePlayerFromReservedSlot(steamId: string): Promise<void> {
   try {
-    // Step 1: Find the reservedPlayer entry via flat endpoint with filters
-    const searchRes = await api.get('/reserved-players', {
+    // Step 1: Find the reserved slot by searching for the steam ID
+    const searchRes = await api.get('/reserved-slots', {
       params: {
-        'filter[list]': config.BM_RESERVED_LIST_ID,
         'filter[search]': steamId,
+        'filter[server]': config.HLL_SERVER_ID,
       },
     });
 
-    const players = searchRes.data?.data;
-    if (!players || players.length === 0) {
-      console.warn(`No reserved player found for steamId ${steamId}`);
+    const slots = searchRes.data?.data;
+    if (!slots || slots.length === 0) {
+      console.warn(`No reserved slot found for Steam ID ${steamId}`);
       return;
     }
 
-    const reservedPlayerId = players[0].id;
+    const reservedSlotId = slots[0].id;
 
-    // Step 2: Delete by the BattleMetrics reservedPlayer ID
-    await api.delete(`/reserved-players/${reservedPlayerId}`);
-    console.log(`Removed ${steamId} (BM ID: ${reservedPlayerId}) from reserved list`);
+    // Step 2: Delete by the BattleMetrics reserved slot ID
+    await api.delete(`/reserved-slots/${reservedSlotId}`);
+    console.log(`Removed reserved slot for Steam ID ${steamId} (slot ID: ${reservedSlotId})`);
   } catch (err) {
     const axErr = err as AxiosError;
     if (axErr.response) {

@@ -3,7 +3,7 @@ import { passport } from '../auth';
 import { config } from '../../config';
 import { prisma } from '../../db';
 import { client } from '../../bot/client';
-import { addPlayerToReservedList } from '../../services/battlemetrics';
+import { addPlayerToReservedSlot } from '../../services/battlemetrics';
 
 const router = Router();
 
@@ -71,7 +71,7 @@ router.get(
       });
 
       // Add to BattleMetrics reserved list
-      await addPlayerToReservedList(steamId);
+      await addPlayerToReservedSlot(steamId);
 
       // DM the user
       try {

@@ -1,7 +1,7 @@
 import { GuildMember, PartialGuildMember } from 'discord.js';
 import { config } from '../../config';
 import { prisma } from '../../db';
-import { removePlayerFromReservedList } from '../../services/battlemetrics';
+import { removePlayerFromReservedSlot } from '../../services/battlemetrics';
 
 export function registerGuildMemberUpdateEvent(): void {
   const { client } = require('../client');
@@ -22,7 +22,7 @@ export function registerGuildMemberUpdateEvent(): void {
 
       console.log(`Revoking VIP for ${newMember.user.tag} (Steam: ${user.steamId})`);
 
-      await removePlayerFromReservedList(user.steamId);
+      await removePlayerFromReservedSlot(user.steamId);
 
       await prisma.user.update({
         where: { discordId: newMember.id },

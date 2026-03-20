@@ -15,7 +15,7 @@ export const config = {
   BATTLEMETRICS_TOKEN: required('BATTLEMETRICS_TOKEN'),
   HLL_SERVER_ID: required('HLL_SERVER_ID'),
   ARMA_SERVER_ID: process.env.ARMA_SERVER_ID || '', // placeholder — not live yet
-  BM_RESERVED_LIST_ID: required('BM_RESERVED_LIST_ID'),
+  BM_ORGANIZATION_ID: required('BM_ORGANIZATION_ID'),
   DATABASE_URL: required('DATABASE_URL'),
   BASE_URL: required('BASE_URL'),
   PORT: parseInt(process.env.PORT || '3000', 10),
