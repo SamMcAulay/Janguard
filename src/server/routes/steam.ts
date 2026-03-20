@@ -10,13 +10,15 @@ const router = Router();
 // Step 1: User clicks link — capture discordId, then redirect to Steam
 router.get('/auth/steam', (req: Request, res: Response, next: NextFunction) => {
   const discordId = req.query.discordId as string | undefined;
+  const guildId = req.query.guildId as string | undefined;
   if (!discordId) {
     res.status(400).send(errorPage('Missing discordId parameter.'));
     return;
   }
 
-  // Store discordId in session before Steam redirect
+  // Store discordId and guildId in session before Steam redirect
   (req.session as any).discordId = discordId;
+  (req.session as any).guildId = guildId || '';
 
   passport.authenticate('steam')(req, res, next);
 });
@@ -30,14 +32,18 @@ router.get(
       const steamProfile = req.user as any;
       const steamId: string = steamProfile._json.steamid;
       const discordId: string = (req.session as any).discordId;
+      const guildId: string = (req.session as any).guildId || '';
 
       if (!discordId) {
         res.status(400).send(errorPage('Session expired. Please try again from Discord.'));
         return;
       }
 
-      // Verify the user has the Premium role
-      const guild = client.guilds.cache.get(config.DISCORD_GUILD_ID);
+      const isTestGuild = config.DISCORD_TEST_GUILD_ID && guildId === config.DISCORD_TEST_GUILD_ID;
+
+      // Verify the user has the Premium role (skip for test guild)
+      const targetGuildId = isTestGuild ? config.DISCORD_TEST_GUILD_ID : config.DISCORD_GUILD_ID;
+      const guild = client.guilds.cache.get(targetGuildId);
       if (!guild) {
         res.status(500).send(errorPage('Bot cannot access the server. Contact an admin.'));
         return;
@@ -51,16 +57,18 @@ router.get(
         return;
       }
 
-      const hasRole = member.roles.cache.has(config.DISCORD_PREMIUM_ROLE_ID);
+      if (!isTestGuild) {
+        const hasRole = member.roles.cache.has(config.DISCORD_PREMIUM_ROLE_ID);
 
-      if (!hasRole) {
-        res.status(403).send(
-          errorPage(
-            'You do not have the Premium role required for VIP.<br><br>' +
-            'Purchase VIP at <a href="https://teg.gg" target="_blank">Teg.gg</a> to get started.',
-          ),
-        );
-        return;
+        if (!hasRole) {
+          res.status(403).send(
+            errorPage(
+              'You do not have the Premium role required for VIP.<br><br>' +
+              'Purchase VIP at <a href="https://teg.gg" target="_blank">Teg.gg</a> to get started.',
+            ),
+          );
+          return;
+        }
       }
 
       // Upsert user in database

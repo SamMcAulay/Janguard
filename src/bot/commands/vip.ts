@@ -14,7 +14,7 @@ export async function handleVipCommand(interaction: ChatInputCommandInteraction)
 
   // Already linked and active
   if (user?.isVip && user.steamId) {
-    const authUrl = `${config.BASE_URL}/auth/steam?discordId=${interaction.user.id}`;
+    const authUrl = `${config.BASE_URL}/auth/steam?discordId=${interaction.user.id}&guildId=${interaction.guildId}`;
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
         .setLabel('Re-link Steam Account')
@@ -34,7 +34,7 @@ export async function handleVipCommand(interaction: ChatInputCommandInteraction)
   }
 
   // Not yet linked — show activation button
-  const authUrl = `${config.BASE_URL}/auth/steam?discordId=${interaction.user.id}`;
+  const authUrl = `${config.BASE_URL}/auth/steam?discordId=${interaction.user.id}&guildId=${interaction.guildId}`;
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setLabel('Link Steam & Activate VIP')

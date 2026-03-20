@@ -13,14 +13,17 @@ export function registerReadyEvent(): void {
       .setDescription('Link your Steam account to activate VIP');
 
     const rest = new REST({ version: '10' }).setToken(config.DISCORD_TOKEN);
-    try {
-      await rest.put(
-        Routes.applicationGuildCommands(config.DISCORD_CLIENT_ID, config.DISCORD_GUILD_ID),
-        { body: [command.toJSON()] },
-      );
-      console.log('Slash commands registered');
-    } catch (err) {
-      console.error('Failed to register slash commands:', err);
+    const guilds = [config.DISCORD_GUILD_ID, config.DISCORD_TEST_GUILD_ID].filter(Boolean);
+    for (const guildId of guilds) {
+      try {
+        await rest.put(
+          Routes.applicationGuildCommands(config.DISCORD_CLIENT_ID, guildId),
+          { body: [command.toJSON()] },
+        );
+        console.log(`Slash commands registered for guild ${guildId}`);
+      } catch (err) {
+        console.error(`Failed to register slash commands for guild ${guildId}:`, err);
+      }
     }
 
     // Start the live server status rotation
