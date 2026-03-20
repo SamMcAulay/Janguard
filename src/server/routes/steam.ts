@@ -4,23 +4,9 @@ import { config } from '../../config';
 import { prisma } from '../../db';
 import { client } from '../../bot/client';
 import { addPlayerToReservedSlot } from '../../services/battlemetrics';
-import crypto from 'crypto';
-
 const router = Router();
 
-// In-memory map to pass discordId/guildId through the Steam redirect
-// Keyed by a random token embedded in the return URL
-const pendingAuth = new Map<string, { discordId: string; guildId: string; createdAt: number }>();
-
-// Clean up stale entries every 10 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, val] of pendingAuth) {
-    if (now - val.createdAt > 600_000) pendingAuth.delete(key);
-  }
-}, 600_000);
-
-// Step 1: User clicks link — store context with a token, then redirect to Steam
+// Step 1: User clicks link — capture discordId, then redirect to Steam
 router.get('/auth/steam', (req: Request, res: Response, next: NextFunction) => {
   const discordId = req.query.discordId as string | undefined;
   const guildId = (req.query.guildId as string) || '';
@@ -29,11 +15,9 @@ router.get('/auth/steam', (req: Request, res: Response, next: NextFunction) => {
     return;
   }
 
-  const token = crypto.randomBytes(16).toString('hex');
-  pendingAuth.set(token, { discordId, guildId, createdAt: Date.now() });
-
-  // Store token in session so we can retrieve it on return
-  (req.session as any).authToken = token;
+  // Store in session (now backed by PostgreSQL — persists across redirects)
+  (req.session as any).discordId = discordId;
+  (req.session as any).guildId = guildId;
 
   req.session.save((err) => {
     if (err) {
@@ -54,28 +38,8 @@ router.get(
       const steamProfile = req.user as any;
       const steamId: string = steamProfile._json.steamid;
 
-      // Try session token first, then fall back to session discordId
-      let discordId: string | undefined;
-      let guildId = '';
-
-      const authToken = (req.session as any).authToken;
-      if (authToken && pendingAuth.has(authToken)) {
-        const pending = pendingAuth.get(authToken)!;
-        discordId = pending.discordId;
-        guildId = pending.guildId;
-        pendingAuth.delete(authToken);
-      } else {
-        discordId = (req.session as any).discordId;
-        guildId = (req.session as any).guildId || '';
-      }
-
-      // Last resort: check all pending entries (single-user scenario)
-      if (!discordId && pendingAuth.size === 1) {
-        const [key, pending] = [...pendingAuth.entries()][0];
-        discordId = pending.discordId;
-        guildId = pending.guildId;
-        pendingAuth.delete(key);
-      }
+      const discordId: string = (req.session as any).discordId;
+      const guildId: string = (req.session as any).guildId || '';
 
       if (!discordId) {
         console.error('Auth return: no discordId found. Session:', JSON.stringify(req.session));

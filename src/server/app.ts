@@ -1,5 +1,6 @@
 import express from 'express';
 import session from 'express-session';
+import pgSimple from 'connect-pg-simple';
 import { config } from '../config';
 import { passport } from './auth';
 import { steamRoutes } from './routes/steam';
@@ -9,8 +10,14 @@ export function createServer(): express.Express {
 
   app.set('trust proxy', 1); // Railway is behind a proxy
 
+  const PgStore = pgSimple(session);
+
   app.use(
     session({
+      store: new PgStore({
+        conString: config.DATABASE_URL,
+        createTableIfMissing: true,
+      }),
       secret: config.SESSION_SECRET,
       resave: false,
       saveUninitialized: true,
