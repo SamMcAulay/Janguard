@@ -105,7 +105,7 @@ router.get(
       });
 
       // Always add VIP via RCON (idempotent on the server side)
-      await addVip(steamId, discordId);
+      await addVip(steamId, member.user.tag);
 
       // DM the user
       try {
