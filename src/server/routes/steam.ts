@@ -87,41 +87,31 @@ router.get(
         }
       }
 
-      // Check if user already has active VIP with same Steam ID
+      // Check if user had VIP under a different Steam ID
       const existingUser = await prisma.user.findUnique({ where: { discordId } });
-      const alreadyActive = existingUser?.isVip && existingUser.steamId === steamId;
+      if (existingUser?.isVip && existingUser.steamId && existingUser.steamId !== steamId) {
+        try {
+          await removeVip(existingUser.steamId);
+        } catch {
+          console.warn(`Could not remove old VIP for ${existingUser.steamId}`);
+        }
+      }
 
-      // Upsert user in database (always update Steam link)
+      // Upsert user in database
       await prisma.user.upsert({
         where: { discordId },
         update: { steamId, isVip: true },
         create: { discordId, steamId, isVip: true },
       });
 
-      // Only add VIP if they don't already have one for this Steam ID
-      if (!alreadyActive) {
-        // If they had VIP under a different Steam ID, remove the old one
-        if (existingUser?.isVip && existingUser.steamId && existingUser.steamId !== steamId) {
-          try {
-            await removeVip(existingUser.steamId);
-          } catch {
-            console.warn(`Could not remove old VIP for ${existingUser.steamId}`);
-          }
-        }
-        await addVip(steamId, discordId);
-      }
+      // Always add VIP via RCON (idempotent on the server side)
+      await addVip(steamId, discordId);
 
       // DM the user
       try {
-        if (alreadyActive) {
-          await member.send(
-            `Your Steam account \`${steamId}\` has been re-linked. Your existing VIP is still active.`,
-          );
-        } else {
-          await member.send(
-            `Your VIP is now **active**! Steam ID \`${steamId}\` has been linked to your account.`,
-          );
-        }
+        await member.send(
+          `Your VIP is now **active**! Steam ID \`${steamId}\` has been linked to your account.`,
+        );
       } catch {
         console.warn(`Could not DM ${member.user.tag}`);
       }
