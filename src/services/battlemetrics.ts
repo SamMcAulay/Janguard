@@ -11,30 +11,28 @@ const api = axios.create({
 
 // ---------- VIP Management (RCON via BattleMetrics) ----------
 
-async function sendRconCommand(command: string): Promise<string> {
+export async function addVip(steamId: string, discordId: string): Promise<void> {
   const payload = {
     data: {
       type: 'rconCommand',
       attributes: {
-        command: 'raw',
-        options: { raw: command },
+        command: 'hll:vipadd',
+        options: {
+          platformID: steamId,
+          description: discordId,
+        },
       },
     },
   };
 
-  const res = await api.post(`/servers/${config.HLL_SERVER_ID}/command`, payload);
-  return res.data?.data?.attributes?.result ?? '';
-}
-
-export async function addVip(steamId: string, discordId: string): Promise<void> {
   try {
-    await sendRconCommand(`VipAdd "${steamId}" "${discordId}"`);
+    await api.post(`/servers/${config.HLL_SERVER_ID}/command`, payload);
     console.log(`Added VIP for Steam ID ${steamId} (Discord: ${discordId})`);
   } catch (err) {
     const axErr = err as AxiosError;
     if (axErr.response) {
       console.error(
-        `BattleMetrics RCON VipAdd failed (${axErr.response.status}):`,
+        `BattleMetrics VipAdd failed (${axErr.response.status}):`,
         JSON.stringify(axErr.response.data),
       );
     }
@@ -43,14 +41,26 @@ export async function addVip(steamId: string, discordId: string): Promise<void> 
 }
 
 export async function removeVip(steamId: string): Promise<void> {
+  const payload = {
+    data: {
+      type: 'rconCommand',
+      attributes: {
+        command: 'hll:vipdel',
+        options: {
+          platformID: steamId,
+        },
+      },
+    },
+  };
+
   try {
-    await sendRconCommand(`VipDel ${steamId}`);
+    await api.post(`/servers/${config.HLL_SERVER_ID}/command`, payload);
     console.log(`Removed VIP for Steam ID ${steamId}`);
   } catch (err) {
     const axErr = err as AxiosError;
     if (axErr.response) {
       console.error(
-        `BattleMetrics RCON VipDel failed (${axErr.response.status}):`,
+        `BattleMetrics VipDel failed (${axErr.response.status}):`,
         JSON.stringify(axErr.response.data),
       );
     }
