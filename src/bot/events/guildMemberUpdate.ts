@@ -1,7 +1,7 @@
 import { GuildMember, PartialGuildMember } from 'discord.js';
 import { config } from '../../config';
 import { prisma } from '../../db';
-import { removePlayerFromReservedSlot } from '../../services/battlemetrics';
+import { removeVip } from '../../services/battlemetrics';
 
 export function registerGuildMemberUpdateEvent(): void {
   const { client } = require('../client');
@@ -22,7 +22,7 @@ export function registerGuildMemberUpdateEvent(): void {
 
       console.log(`Revoking VIP for ${newMember.user.tag} (Steam: ${user.steamId})`);
 
-      await removePlayerFromReservedSlot(user.steamId);
+      await removeVip(user.steamId);
 
       await prisma.user.update({
         where: { discordId: newMember.id },
@@ -31,7 +31,7 @@ export function registerGuildMemberUpdateEvent(): void {
 
       try {
         await newMember.send(
-          'Your Premium role has been removed, so your VIP reserved slot has been revoked. If you believe this is an error, please contact a server admin.',
+          'Your Premium role has been removed, so your VIP has been revoked. If you believe this is an error, please contact a server admin.',
         );
       } catch {
         console.warn(`Could not DM ${newMember.user.tag} about VIP revocation`);

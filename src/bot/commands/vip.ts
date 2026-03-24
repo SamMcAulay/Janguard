@@ -44,7 +44,7 @@ export async function handleVipCommand(interaction: ChatInputCommandInteraction)
 
   await interaction.reply({
     content:
-      '**Activate your VIP Reserved Slot**\n\n' +
+      '**Activate your VIP**\n\n' +
       'Click the button below to authenticate with Steam.\n' +
       'You must have the **Premium** role to complete activation.',
     components: [row],

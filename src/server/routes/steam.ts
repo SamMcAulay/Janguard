@@ -3,7 +3,7 @@ import { passport } from '../auth';
 import { config } from '../../config';
 import { prisma } from '../../db';
 import { client } from '../../bot/client';
-import { addPlayerToReservedSlot, removePlayerFromReservedSlot } from '../../services/battlemetrics';
+import { addVip, removeVip } from '../../services/battlemetrics';
 const router = Router();
 
 // Step 1: User clicks link — capture discordId, then redirect to Steam
@@ -87,9 +87,9 @@ router.get(
         }
       }
 
-      // Check if user already has an active reserved slot
+      // Check if user already has active VIP with same Steam ID
       const existingUser = await prisma.user.findUnique({ where: { discordId } });
-      const alreadyReserved = existingUser?.isVip && existingUser.steamId === steamId;
+      const alreadyActive = existingUser?.isVip && existingUser.steamId === steamId;
 
       // Upsert user in database (always update Steam link)
       await prisma.user.upsert({
@@ -98,28 +98,28 @@ router.get(
         create: { discordId, steamId, isVip: true },
       });
 
-      // Only create a BattleMetrics reserved slot if they don't already have one
-      if (!alreadyReserved) {
-        // If they had a slot under a different Steam ID, remove the old one
+      // Only add VIP if they don't already have one for this Steam ID
+      if (!alreadyActive) {
+        // If they had VIP under a different Steam ID, remove the old one
         if (existingUser?.isVip && existingUser.steamId && existingUser.steamId !== steamId) {
           try {
-            await removePlayerFromReservedSlot(existingUser.steamId);
+            await removeVip(existingUser.steamId);
           } catch {
-            console.warn(`Could not remove old reserved slot for ${existingUser.steamId}`);
+            console.warn(`Could not remove old VIP for ${existingUser.steamId}`);
           }
         }
-        await addPlayerToReservedSlot(steamId, member.user.tag);
+        await addVip(steamId, discordId);
       }
 
       // DM the user
       try {
-        if (alreadyReserved) {
+        if (alreadyActive) {
           await member.send(
-            `Your Steam account \`${steamId}\` has been re-linked. Your existing VIP reserved slot is still active.`,
+            `Your Steam account \`${steamId}\` has been re-linked. Your existing VIP is still active.`,
           );
         } else {
           await member.send(
-            `Your VIP reserved slot is now **active**! Steam ID \`${steamId}\` has been linked to your account.`,
+            `Your VIP is now **active**! Steam ID \`${steamId}\` has been linked to your account.`,
           );
         }
       } catch {
@@ -157,7 +157,7 @@ function successPage(discordTag: string, steamId: string): string {
 <body>
   <div class="card">
     <h1>VIP Activated</h1>
-    <p>Your reserved slot is now active. You can close this page.</p>
+    <p>Your VIP is now active. You can close this page.</p>
     <div class="detail"><strong>Discord:</strong> ${escapeHtml(discordTag)}</div>
     <div class="detail"><strong>Steam ID:</strong> ${escapeHtml(steamId)}</div>
   </div>
