@@ -65,24 +65,34 @@ export async function handleWipeCommand(message: Message): Promise<void> {
   // Parse: !wipe {text} [@user]
   const args = message.content.slice('!wipe '.length).trim();
   if (!args) {
-    await message.reply('Usage: `!wipe <text> [@user]`');
+    await message.reply('Usage: `!wipe <text> [| note] [@user]`');
     return;
   }
 
   let searchText: string;
+  let note: string | null = null;
   let targetUserId: string | null = null;
 
+  let remaining = args;
+
   // Check if the last argument is a user mention
-  const mentionMatch = args.match(/<@!?(\d+)>\s*$/);
+  const mentionMatch = remaining.match(/<@!?(\d+)>\s*$/);
   if (mentionMatch) {
     targetUserId = mentionMatch[1];
-    searchText = args.slice(0, mentionMatch.index).trim();
+    remaining = remaining.slice(0, mentionMatch.index).trim();
+  }
+
+  // Split on | to separate search text from note
+  const pipeIndex = remaining.indexOf('|');
+  if (pipeIndex !== -1) {
+    searchText = remaining.slice(0, pipeIndex).trim();
+    note = remaining.slice(pipeIndex + 1).trim() || null;
   } else {
-    searchText = args;
+    searchText = remaining;
   }
 
   if (!searchText) {
-    await message.reply('Usage: `!wipe <text> [@user]`');
+    await message.reply('Usage: `!wipe <text> [| note] [@user]`');
     return;
   }
 
@@ -104,10 +114,8 @@ export async function handleWipeCommand(message: Message): Promise<void> {
 
   // Send summary in the channel the command was run in
   const targetLabel = targetUserId ? ` from <@${targetUserId}>` : '';
-  const summary = await message.channel.send(
-    `Wiped **${totalDeleted}** message${totalDeleted !== 1 ? 's' : ''} across **${channels.size}** channel${channels.size !== 1 ? 's' : ''}${targetLabel} matching \`${searchText}\` — requested by ${message.author}.`,
+  const noteLabel = note ? `\nReason: ${note}` : '';
+  await message.channel.send(
+    `Wiped **${totalDeleted}** message${totalDeleted !== 1 ? 's' : ''} across **${channels.size}** channel${channels.size !== 1 ? 's' : ''}${targetLabel} matching \`${searchText}\` — requested by ${message.author}.${noteLabel}`,
   );
-
-  // Auto-delete the summary after 10 seconds
-  setTimeout(() => summary.delete().catch(() => {}), 10_000);
 }
