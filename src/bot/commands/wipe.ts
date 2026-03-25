@@ -1,15 +1,37 @@
 import { ChannelType, Message, PermissionFlagsBits, TextChannel } from 'discord.js';
 
-async function wipeChannel(channel: TextChannel, searchText: string, targetUserId: string | null): Promise<number> {
-  // Quick check: fetch only the most recent 100 messages first.
-  // Spam bots post one message per channel, so this almost always suffices.
+interface WipeFilter {
+  text: string | null;
+  attachmentNames: string[] | null;
+  targetUserId: string | null;
+}
+
+function messageMatches(msg: Message, filter: WipeFilter): boolean {
+  if (filter.targetUserId && msg.author.id !== filter.targetUserId) return false;
+
+  // A message matches if its text and attachments are identical to the reference.
+  // Both fields must match when present in the reference.
+  const textMatch = filter.text ? msg.content === filter.text : msg.content === '';
+  const attachmentNames = [...msg.attachments.values()].map((a) => a.name).sort();
+  const attachmentsMatch = filter.attachmentNames
+    ? attachmentNames.length === filter.attachmentNames.length &&
+      attachmentNames.every((name, i) => name === filter.attachmentNames![i])
+    : attachmentNames.length === 0;
+
+  return textMatch && attachmentsMatch;
+}
+
+async function wipeChannel(
+  channel: TextChannel,
+  filter: WipeFilter,
+  skipMessageId: string | null,
+): Promise<number> {
   const fetched = await channel.messages.fetch({ limit: 100 });
   if (fetched.size === 0) return 0;
 
   const toDelete = fetched.filter((msg) => {
-    const contentMatch = msg.content === searchText;
-    const userMatch = targetUserId ? msg.author.id === targetUserId : true;
-    return contentMatch && userMatch;
+    if (msg.id === skipMessageId) return false;
+    return messageMatches(msg, filter);
   });
 
   if (toDelete.size === 0) return 0;
@@ -52,7 +74,6 @@ async function parallel<T, R>(items: T[], concurrency: number, fn: (item: T) => 
 export async function handleWipeCommand(message: Message): Promise<void> {
   if (!message.guild || !(message.channel instanceof TextChannel)) return;
 
-  // Require Manage Messages permission
   if (!message.member?.permissions.has(PermissionFlagsBits.ManageMessages)) {
     await message.reply('You need the **Manage Messages** permission to use this command.');
     return;
@@ -64,42 +85,63 @@ export async function handleWipeCommand(message: Message): Promise<void> {
     return;
   }
 
-  // Parse: !wipe {text} [| note] [@user]
-  const args = message.content.slice('!wipe '.length).trim();
-  if (!args) {
-    await message.reply('Usage: `!wipe <text> [| note] [@user]`');
-    return;
-  }
+  const args = message.content.slice('!wipe'.length).trim();
 
-  let searchText: string;
   let note: string | null = null;
   let targetUserId: string | null = null;
+  let filter: WipeFilter;
 
+  // Parse optional note and user from args (applies to both modes)
   let remaining = args;
-
-  // Check if the last argument is a user mention
   const mentionMatch = remaining.match(/<@!?(\d+)>\s*$/);
   if (mentionMatch) {
     targetUserId = mentionMatch[1];
     remaining = remaining.slice(0, mentionMatch.index).trim();
   }
-
-  // Split on | to separate search text from note
   const pipeIndex = remaining.indexOf('|');
   if (pipeIndex !== -1) {
-    searchText = remaining.slice(0, pipeIndex).trim();
     note = remaining.slice(pipeIndex + 1).trim() || null;
+    remaining = remaining.slice(0, pipeIndex).trim();
+  }
+
+  // Check if this is a reply to a message
+  const ref = message.reference;
+  if (ref?.messageId) {
+    // Reply mode: use the referenced message as the template
+    const refChannel = message.channel;
+    const refMsg = await refChannel.messages.fetch(ref.messageId).catch(() => null);
+    if (!refMsg) {
+      await message.reply('Could not fetch the referenced message.');
+      return;
+    }
+
+    const attachmentNames = [...refMsg.attachments.values()].map((a) => a.name).sort();
+    filter = {
+      text: refMsg.content || null,
+      attachmentNames: attachmentNames.length > 0 ? attachmentNames : null,
+      targetUserId,
+    };
+
+    if (!filter.text && !filter.attachmentNames) {
+      await message.reply('The referenced message has no text or attachments to match against.');
+      return;
+    }
   } else {
-    searchText = remaining;
+    // Inline text mode: !wipe <text> [| note] [@user]
+    if (!remaining) {
+      await message.reply('Usage: reply to a spam message with `!wipe`, or `!wipe <text> [| note] [@user]`');
+      return;
+    }
+    filter = { text: remaining, attachmentNames: null, targetUserId };
   }
 
-  if (!searchText) {
-    await message.reply('Usage: `!wipe <text> [| note] [@user]`');
-    return;
-  }
-
-  // Delete the wipe command immediately so the spam link isn't sitting in chat
+  // Delete the wipe command (and the referenced spam message if in reply mode)
+  const refMessageId = ref?.messageId ?? null;
   await message.delete().catch(() => {});
+  if (refMessageId) {
+    const refMsg = await message.channel.messages.fetch(refMessageId).catch(() => null);
+    if (refMsg) await refMsg.delete().catch(() => {});
+  }
 
   // Collect all text channels the bot can manage messages in
   const guild = message.guild;
@@ -111,16 +153,21 @@ export async function handleWipeCommand(message: Message): Promise<void> {
     )
     .values()];
 
-  // Process 10 channels at a time to stay within rate limits
+  // Process 10 channels concurrently
   const results = await parallel(channels, 10, (ch) =>
-    wipeChannel(ch, searchText, targetUserId).catch(() => 0),
+    wipeChannel(ch, filter, refMessageId).catch(() => 0),
   );
   const totalDeleted = results.reduce((sum, n) => sum + n, 0);
 
-  // Send summary in the channel the command was run in
+  // Build summary description of what was matched
+  const matchParts: string[] = [];
+  if (filter.text) matchParts.push(`text \`${filter.text}\``);
+  if (filter.attachmentNames) matchParts.push(`attachments [${filter.attachmentNames.join(', ')}]`);
+  const matchDesc = matchParts.join(' + ');
+
   const targetLabel = targetUserId ? ` from <@${targetUserId}>` : '';
   const noteLabel = note ? `\nReason: ${note}` : '';
   await message.channel.send(
-    `Wiped **${totalDeleted}** message${totalDeleted !== 1 ? 's' : ''} across **${channels.length}** channel${channels.length !== 1 ? 's' : ''}${targetLabel} matching \`${searchText}\` — requested by ${message.author}.${noteLabel}`,
+    `Wiped **${totalDeleted}** message${totalDeleted !== 1 ? 's' : ''} across **${channels.length}** channel${channels.length !== 1 ? 's' : ''}${targetLabel} matching ${matchDesc} — requested by ${message.author}.${noteLabel}`,
   );
 }

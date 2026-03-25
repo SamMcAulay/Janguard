@@ -28,7 +28,7 @@ async function main(): Promise<void> {
   // Handle prefix commands
   client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
-    if (message.content.startsWith('!wipe ')) {
+    if (message.content === '!wipe' || message.content.startsWith('!wipe ')) {
       await handleWipeCommand(message);
     }
   });
