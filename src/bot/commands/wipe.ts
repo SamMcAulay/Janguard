@@ -1,50 +1,52 @@
 import { ChannelType, Message, PermissionFlagsBits, TextChannel } from 'discord.js';
 
 async function wipeChannel(channel: TextChannel, searchText: string, targetUserId: string | null): Promise<number> {
-  let lastId: string | undefined;
-  const toDelete: Message[] = [];
+  // Quick check: fetch only the most recent 100 messages first.
+  // Spam bots post one message per channel, so this almost always suffices.
+  const fetched = await channel.messages.fetch({ limit: 100 });
+  if (fetched.size === 0) return 0;
 
-  // Scan the last 500 messages per channel
-  for (let i = 0; i < 5; i++) {
-    const fetched = await channel.messages.fetch({ limit: 100, ...(lastId ? { before: lastId } : {}) });
-    if (fetched.size === 0) break;
+  const toDelete = fetched.filter((msg) => {
+    const contentMatch = msg.content === searchText;
+    const userMatch = targetUserId ? msg.author.id === targetUserId : true;
+    return contentMatch && userMatch;
+  });
 
-    for (const msg of fetched.values()) {
-      const contentMatch = msg.content === searchText;
-      const userMatch = targetUserId ? msg.author.id === targetUserId : true;
-
-      if (contentMatch && userMatch) {
-        toDelete.push(msg);
-      }
-    }
-
-    lastId = fetched.last()?.id;
-    if (fetched.size < 100) break;
-  }
-
-  if (toDelete.length === 0) return 0;
+  if (toDelete.size === 0) return 0;
 
   const now = Date.now();
   const twoWeeksMs = 14 * 24 * 60 * 60 * 1000;
-  const bulkDeletable = toDelete.filter((m) => now - m.createdTimestamp < twoWeeksMs);
-  const tooOld = toDelete.filter((m) => now - m.createdTimestamp >= twoWeeksMs);
+  const messages = [...toDelete.values()];
+  const bulkDeletable = messages.filter((m) => now - m.createdTimestamp < twoWeeksMs);
+  const tooOld = messages.filter((m) => now - m.createdTimestamp >= twoWeeksMs);
 
-  // Bulk delete in chunks of 100
-  for (let i = 0; i < bulkDeletable.length; i += 100) {
-    const chunk = bulkDeletable.slice(i, i + 100);
-    if (chunk.length === 1) {
-      await chunk[0].delete();
-    } else if (chunk.length > 1) {
-      await channel.bulkDelete(chunk);
-    }
+  if (bulkDeletable.length === 1) {
+    await bulkDeletable[0].delete();
+  } else if (bulkDeletable.length > 1) {
+    await channel.bulkDelete(bulkDeletable);
   }
 
-  // Individually delete messages older than 14 days
   for (const msg of tooOld) {
     await msg.delete();
   }
 
-  return toDelete.length;
+  return messages.length;
+}
+
+/** Run promises with a max concurrency limit */
+async function parallel<T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = [];
+  let index = 0;
+
+  async function worker(): Promise<void> {
+    while (index < items.length) {
+      const i = index++;
+      results[i] = await fn(items[i]);
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
+  return results;
 }
 
 export async function handleWipeCommand(message: Message): Promise<void> {
@@ -62,7 +64,7 @@ export async function handleWipeCommand(message: Message): Promise<void> {
     return;
   }
 
-  // Parse: !wipe {text} [@user]
+  // Parse: !wipe {text} [| note] [@user]
   const args = message.content.slice('!wipe '.length).trim();
   if (!args) {
     await message.reply('Usage: `!wipe <text> [| note] [@user]`');
@@ -99,23 +101,26 @@ export async function handleWipeCommand(message: Message): Promise<void> {
   // Delete the wipe command immediately so the spam link isn't sitting in chat
   await message.delete().catch(() => {});
 
-  // Wipe across all text channels the bot can access
+  // Collect all text channels the bot can manage messages in
   const guild = message.guild;
-  const channels = guild.channels.cache.filter(
-    (ch): ch is TextChannel =>
-      ch.type === ChannelType.GuildText &&
-      ch.permissionsFor(botMember!)?.has(PermissionFlagsBits.ManageMessages) === true,
-  );
+  const channels = [...guild.channels.cache
+    .filter(
+      (ch): ch is TextChannel =>
+        ch.type === ChannelType.GuildText &&
+        ch.permissionsFor(botMember!)?.has(PermissionFlagsBits.ManageMessages) === true,
+    )
+    .values()];
 
-  let totalDeleted = 0;
-  for (const channel of channels.values()) {
-    totalDeleted += await wipeChannel(channel, searchText, targetUserId);
-  }
+  // Process 10 channels at a time to stay within rate limits
+  const results = await parallel(channels, 10, (ch) =>
+    wipeChannel(ch, searchText, targetUserId).catch(() => 0),
+  );
+  const totalDeleted = results.reduce((sum, n) => sum + n, 0);
 
   // Send summary in the channel the command was run in
   const targetLabel = targetUserId ? ` from <@${targetUserId}>` : '';
   const noteLabel = note ? `\nReason: ${note}` : '';
   await message.channel.send(
-    `Wiped **${totalDeleted}** message${totalDeleted !== 1 ? 's' : ''} across **${channels.size}** channel${channels.size !== 1 ? 's' : ''}${targetLabel} matching \`${searchText}\` — requested by ${message.author}.${noteLabel}`,
+    `Wiped **${totalDeleted}** message${totalDeleted !== 1 ? 's' : ''} across **${channels.length}** channel${channels.length !== 1 ? 's' : ''}${targetLabel} matching \`${searchText}\` — requested by ${message.author}.${noteLabel}`,
   );
 }
