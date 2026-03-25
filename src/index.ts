@@ -3,6 +3,7 @@ import { client } from './bot/client';
 import { registerReadyEvent } from './bot/events/ready';
 import { registerGuildMemberUpdateEvent } from './bot/events/guildMemberUpdate';
 import { handleVipCommand } from './bot/commands/vip';
+import { handleWipeCommand } from './bot/commands/wipe';
 import { createServer } from './server/app';
 import { prisma } from './db';
 import { Interaction } from 'discord.js';
@@ -21,6 +22,14 @@ async function main(): Promise<void> {
     if (!interaction.isChatInputCommand()) return;
     if (interaction.commandName === 'vip') {
       await handleVipCommand(interaction);
+    }
+  });
+
+  // Handle prefix commands
+  client.on('messageCreate', async (message) => {
+    if (message.author.bot) return;
+    if (message.content.startsWith('!wipe ')) {
+      await handleWipeCommand(message);
     }
   });
 
