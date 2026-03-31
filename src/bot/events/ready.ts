@@ -16,7 +16,6 @@ export function registerReadyEvent(): void {
     const setupCalendarCommand = new SlashCommandBuilder()
       .setName('setup_calendar')
       .setDescription('Set the channel for calendar event announcements')
-      .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
       .addChannelOption((option) =>
         option
           .setName('channel')

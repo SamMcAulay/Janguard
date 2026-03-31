@@ -1,10 +1,14 @@
 import { ChatInputCommandInteraction, PermissionFlagsBits, ChannelType } from 'discord.js';
 import { prisma } from '../../db';
+import { config } from '../../config';
 
 export async function handleSetupCalendarCommand(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
-  if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
+  const isOwner = interaction.user.id === config.BOT_OWNER_ID;
+  const isAdmin = interaction.memberPermissions?.has(PermissionFlagsBits.Administrator);
+
+  if (!isOwner && !isAdmin) {
     await interaction.reply({
       content: 'You need Administrator permissions to use this command.',
       ephemeral: true,

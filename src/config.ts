@@ -21,6 +21,7 @@ export const config = {
   BASE_URL: required('BASE_URL'),
   PORT: parseInt(process.env.PORT || '3000', 10),
   SESSION_SECRET: required('SESSION_SECRET'),
+  BOT_OWNER_ID: process.env.BOT_OWNER_ID || '838827787174543380',
   GOOGLE_API_KEY: required('GOOGLE_API_KEY'),
   GOOGLE_CALENDAR_ID: process.env.GOOGLE_CALENDAR_ID || '88c63350004c5f8e5bad1150e74aeb7a36a7f743fe3d24c97fcbef755722861c@group.calendar.google.com',
 };
