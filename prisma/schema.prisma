@@ -14,3 +14,28 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model GuildSettings {
+  guildId              String @id
+  announcementChannelId String
+}
+
+model UserSubscription {
+  userId       String   @id
+  subscribedAt DateTime @default(now())
+}
+
+model CalendarState {
+  id            Int     @id @default(1)
+  nextSyncToken String?
+}
+
+model EventCache {
+  eventId   String @id
+  summary   String
+  description String?
+  htmlLink  String?
+  startTime Int
+  endTime   Int
+  status    String @default("upcoming")
+}

@@ -3,6 +3,8 @@ import { client } from './bot/client';
 import { registerReadyEvent } from './bot/events/ready';
 import { registerGuildMemberUpdateEvent } from './bot/events/guildMemberUpdate';
 import { handleVipCommand } from './bot/commands/vip';
+import { handleSetupCalendarCommand } from './bot/commands/setupCalendar';
+import { handleCalendarButton } from './bot/events/calendarButtons';
 import { handleWipeCommand } from './bot/commands/wipe';
 import { createServer } from './server/app';
 import { prisma } from './db';
@@ -17,11 +19,18 @@ async function main(): Promise<void> {
   registerReadyEvent();
   registerGuildMemberUpdateEvent();
 
-  // Handle slash commands
+  // Handle interactions (slash commands + buttons)
   client.on('interactionCreate', async (interaction: Interaction) => {
-    if (!interaction.isChatInputCommand()) return;
-    if (interaction.commandName === 'vip') {
-      await handleVipCommand(interaction);
+    if (interaction.isChatInputCommand()) {
+      if (interaction.commandName === 'vip') {
+        await handleVipCommand(interaction);
+      } else if (interaction.commandName === 'setup_calendar') {
+        await handleSetupCalendarCommand(interaction);
+      }
+    } else if (interaction.isButton()) {
+      if (interaction.customId === 'cal_subscribe' || interaction.customId === 'cal_unsubscribe') {
+        await handleCalendarButton(interaction);
+      }
     }
   });
 
