@@ -22,6 +22,7 @@ async function dispatchToChannels(
 ): Promise<void> {
   const guilds = await prisma.guildSettings.findMany();
   for (const gs of guilds) {
+    if (!gs.announcementChannelId) continue;
     try {
       const channel = await client.channels.fetch(gs.announcementChannelId);
       if (channel?.isTextBased() && channel instanceof TextChannel) {

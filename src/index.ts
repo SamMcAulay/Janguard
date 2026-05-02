@@ -6,6 +6,8 @@ import { handleVipCommand } from './bot/commands/vip';
 import { handleSetupCalendarCommand } from './bot/commands/setupCalendar';
 import { handleCalendarButton } from './bot/events/calendarButtons';
 import { handleWipeCommand } from './bot/commands/wipe';
+import { handleSetupHoneypotCommand } from './bot/commands/setupHoneypot';
+import { handleHoneypotMessage } from './bot/commands/honeypot';
 import { createServer } from './server/app';
 import { prisma } from './db';
 import { Interaction } from 'discord.js';
@@ -26,6 +28,8 @@ async function main(): Promise<void> {
         await handleVipCommand(interaction);
       } else if (interaction.commandName === 'setup_calendar') {
         await handleSetupCalendarCommand(interaction);
+      } else if (interaction.commandName === 'setup_honeypot') {
+        await handleSetupHoneypotCommand(interaction);
       }
     } else if (interaction.isButton()) {
       if (interaction.customId === 'cal_subscribe' || interaction.customId === 'cal_unsubscribe') {
@@ -34,12 +38,14 @@ async function main(): Promise<void> {
     }
   });
 
-  // Handle prefix commands
+  // Handle prefix commands and honeypot detection
   client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
     if (message.content === '!wipe' || message.content.startsWith('!wipe ')) {
       await handleWipeCommand(message);
+      return;
     }
+    await handleHoneypotMessage(message);
   });
 
   // Start Express server

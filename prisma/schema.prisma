@@ -16,8 +16,11 @@ model User {
 }
 
 model GuildSettings {
-  guildId              String @id
-  announcementChannelId String
+  guildId                       String  @id
+  announcementChannelId         String?
+  honeypotChannelId             String?
+  honeypotRoleId                String?
+  honeypotNotificationChannelId String?
 }
 
 model UserSubscription {

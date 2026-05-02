@@ -16,6 +16,21 @@ export interface CalendarEvent {
 
 type NotificationType = 'new' | '1hr' | 'ended' | 'deleted';
 
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<a\s+[^>]*href="([^"]*)"[^>]*>[^<]*<\/a>/gi, '$1')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 export function generateEventEmbed(
   event: CalendarEvent,
   type: NotificationType,
@@ -40,7 +55,7 @@ export function generateEventEmbed(
 
   let desc = '';
   if (event.description) {
-    desc += event.description + '\n\n';
+    desc += stripHtml(event.description) + '\n\n';
   }
   if (event.htmlLink) {
     desc += `[View on Google Calendar](${event.htmlLink})`;

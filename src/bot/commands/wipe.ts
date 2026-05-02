@@ -1,6 +1,6 @@
 import { ChannelType, Message, PermissionFlagsBits, TextChannel } from 'discord.js';
 
-interface WipeFilter {
+export interface WipeFilter {
   text: string | null;
   attachmentNames: string[] | null;
   targetUserId: string | null;
@@ -21,7 +21,7 @@ function messageMatches(msg: Message, filter: WipeFilter): boolean {
   return textMatch && attachmentsMatch;
 }
 
-async function wipeChannel(
+export async function wipeChannel(
   channel: TextChannel,
   filter: WipeFilter,
   skipMessageId: string | null,
@@ -56,7 +56,7 @@ async function wipeChannel(
 }
 
 /** Run promises with a max concurrency limit */
-async function parallel<T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+export async function parallel<T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const results: R[] = [];
   let index = 0;
 

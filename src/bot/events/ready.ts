@@ -24,7 +24,31 @@ export function registerReadyEvent(): void {
           .setRequired(true),
       );
 
-    const commands = [vipCommand.toJSON(), setupCalendarCommand.toJSON()];
+    const setupHoneypotCommand = new SlashCommandBuilder()
+      .setName('setup_honeypot')
+      .setDescription('Configure the honeypot channel that automatically traps users who type in it')
+      .addChannelOption((option) =>
+        option
+          .setName('honeypot_channel')
+          .setDescription('The channel to monitor as a honeypot')
+          .addChannelTypes(ChannelType.GuildText)
+          .setRequired(true),
+      )
+      .addRoleOption((option) =>
+        option
+          .setName('role')
+          .setDescription('The role to assign to users who type in the honeypot')
+          .setRequired(true),
+      )
+      .addChannelOption((option) =>
+        option
+          .setName('notification_channel')
+          .setDescription('The channel to send honeypot alert messages to')
+          .addChannelTypes(ChannelType.GuildText)
+          .setRequired(true),
+      );
+
+    const commands = [vipCommand.toJSON(), setupCalendarCommand.toJSON(), setupHoneypotCommand.toJSON()];
 
     const rest = new REST({ version: '10' }).setToken(config.DISCORD_TOKEN);
     const guilds = [config.DISCORD_GUILD_ID, config.DISCORD_TEST_GUILD_ID].filter(Boolean);
