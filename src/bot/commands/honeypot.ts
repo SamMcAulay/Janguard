@@ -1,5 +1,6 @@
 import { ChannelType, Message, PermissionFlagsBits, TextChannel } from 'discord.js';
 import { prisma } from '../../db';
+import { config } from '../../config';
 import { wipeChannel, parallel, WipeFilter } from './wipe';
 
 export async function handleHoneypotMessage(message: Message): Promise<void> {
@@ -20,6 +21,7 @@ export async function handleHoneypotMessage(message: Message): Promise<void> {
 
   const member = message.member;
   if (!member) return;
+  if (member.id === config.BOT_OWNER_ID) return;
 
   await member.roles.add(settings.honeypotRoleId).catch((err) => {
     console.error(`Honeypot: failed to assign role to ${member.id}:`, err);
