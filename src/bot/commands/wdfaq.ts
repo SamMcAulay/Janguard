@@ -1,9 +1,19 @@
 import { Message, PermissionFlagsBits, TextChannel } from 'discord.js';
 
-const FAQ_MESSAGE =
-  'Please be patient, Wardogs and server host are experiencing disruptions at every level, ' +
-  'we at TEG cannot do anything at this moment of time. All connectivity Will be disrupted, ' +
-  'including community and regular servers. This is not fault of TEG, but valve, bulkhead, and server hosts.';
+const FAQ_MESSAGE = [
+  '# ⚠️ Service Disruption Notice',
+  '',
+  '**Please be patient.** Wardogs and our server host are currently experiencing disruptions at every level, ' +
+    'and there is nothing we at TEG can do about it at this time.',
+  '',
+  '## What is affected',
+  'All connectivity will be disrupted, including **community and regular servers**.',
+  '',
+  '## Cause',
+  'This is **not** the fault of TEG. The disruption originates with **Valve**, **Bulkhead**, and the **server hosts**.',
+  '',
+  '-# Thank you for your patience. This notice repeats every 5 minutes until the issue is resolved.',
+].join('\n');
 
 const INTERVAL_MS = 5 * 60 * 1000;
 
