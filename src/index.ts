@@ -8,6 +8,7 @@ import { handleCalendarButton } from './bot/events/calendarButtons';
 import { handleWipeCommand } from './bot/commands/wipe';
 import { handleSetupHoneypotCommand } from './bot/commands/setupHoneypot';
 import { handleHoneypotMessage } from './bot/commands/honeypot';
+import { handleWdfaqStartCommand, handleWdfaqStopCommand } from './bot/commands/wdfaq';
 import { createServer } from './server/app';
 import { prisma } from './db';
 import { Interaction } from 'discord.js';
@@ -43,6 +44,15 @@ async function main(): Promise<void> {
     if (message.author.bot) return;
     if (message.content === '!wipe' || message.content.startsWith('!wipe ')) {
       await handleWipeCommand(message);
+      return;
+    }
+    const lowered = message.content.trim().toLowerCase();
+    if (lowered === '?wdfaqstart') {
+      await handleWdfaqStartCommand(message);
+      return;
+    }
+    if (lowered === '?wdfaqstop') {
+      await handleWdfaqStopCommand(message);
       return;
     }
     await handleHoneypotMessage(message);
