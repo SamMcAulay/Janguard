@@ -47,7 +47,7 @@ async function main(): Promise<void> {
       return;
     }
     const lowered = message.content.trim().toLowerCase();
-    if (lowered === '?wdfaqstart') {
+    if (lowered === '?wdfaqstart' || lowered.startsWith('?wdfaqstart ')) {
       await handleWdfaqStartCommand(message);
       return;
     }

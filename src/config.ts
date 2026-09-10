@@ -22,6 +22,8 @@ export const config = {
   PORT: parseInt(process.env.PORT || '3000', 10),
   SESSION_SECRET: required('SESSION_SECRET'),
   BOT_OWNER_ID: process.env.BOT_OWNER_ID || '838827787174543380',
+  // Default gap between WDFAQ broadcasts; overridable per invocation via the command argument
+  WDFAQ_INTERVAL_MS: parseFloat(process.env.WDFAQ_INTERVAL_MINUTES || '5') * 60 * 1000,
   GOOGLE_API_KEY: required('GOOGLE_API_KEY'),
   GOOGLE_CALENDAR_ID: process.env.GOOGLE_CALENDAR_ID || '88c63350004c5f8e5bad1150e74aeb7a36a7f743fe3d24c97fcbef755722861c@group.calendar.google.com',
 };
