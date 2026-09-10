@@ -42,3 +42,12 @@ model EventCache {
   endTime   Int
   status    String @default("upcoming")
 }
+
+model StickyMessage {
+  channelId String   @id
+  guildId   String
+  content   String
+  messageId String?
+  createdBy String
+  createdAt DateTime @default(now())
+}

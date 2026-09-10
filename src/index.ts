@@ -9,6 +9,12 @@ import { handleWipeCommand } from './bot/commands/wipe';
 import { handleSetupHoneypotCommand } from './bot/commands/setupHoneypot';
 import { handleHoneypotMessage } from './bot/commands/honeypot';
 import { handleWdfaqStartCommand, handleWdfaqStopCommand } from './bot/commands/wdfaq';
+import {
+  handleStickCommand,
+  handleStickStopCommand,
+  handleStickyMessage,
+  loadStickyMessages,
+} from './bot/commands/sticky';
 import { createServer } from './server/app';
 import { prisma } from './db';
 import { Interaction } from 'discord.js';
@@ -17,6 +23,9 @@ async function main(): Promise<void> {
   // Connect to database
   await prisma.$connect();
   console.log('Database connected');
+
+  // Restore sticky messages saved before the last restart
+  await loadStickyMessages();
 
   // Register bot events
   registerReadyEvent();
@@ -41,6 +50,9 @@ async function main(): Promise<void> {
 
   // Handle prefix commands and honeypot detection
   client.on('messageCreate', async (message) => {
+    // Other bots push a sticky down too, so this runs before the bot filter
+    handleStickyMessage(message);
+
     if (message.author.bot) return;
     if (message.content === '!wipe' || message.content.startsWith('!wipe ')) {
       await handleWipeCommand(message);
@@ -53,6 +65,14 @@ async function main(): Promise<void> {
     }
     if (lowered === '?wdfaqstop') {
       await handleWdfaqStopCommand(message);
+      return;
+    }
+    if (lowered === '?stickstop') {
+      await handleStickStopCommand(message);
+      return;
+    }
+    if (lowered.startsWith('?stick ') || lowered.startsWith('?stick\n') || lowered === '?stick') {
+      await handleStickCommand(message);
       return;
     }
     await handleHoneypotMessage(message);
