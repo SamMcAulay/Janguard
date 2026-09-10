@@ -12,10 +12,8 @@ function buildFaqMessage(intervalMs: number): string {
     '**Please be patient.** Wardogs and our server host are currently experiencing disruptions at every level, ' +
       'and there is nothing we at TEG can do about it at this time.',
     '',
-    '## What is affected',
     'All connectivity will be disrupted, including **community and regular servers**.',
     '',
-    '## Cause',
     'This is **not** the fault of TEG. The disruption originates with **Valve**, **Bulkhead**, and the **server hosts**.',
     '',
     `-# Thank you for your patience. This notice repeats every ${formatDuration(intervalMs)} until the issue is resolved.`,
